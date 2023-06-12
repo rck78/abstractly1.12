@@ -1,13 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'reusable_card.dart';
 import 'constants.dart';
-//import 'round_icon_button.dart';
-import 'results_page.dart';
-import 'calculate_button.dart';
-//import 'calculator_brain.dart';
-import 'summarizer_engine.dart';
-import 'package:clipboard/clipboard.dart';
 
 class TextInput extends StatelessWidget {
   const TextInput({
@@ -38,7 +31,7 @@ class TextInput extends StatelessWidget {
               maxLines: null,
               cursorColor: kBottomContainerColour,
               style: TextStyle(
-                color: Colors.white,
+                color: Colors.black,
                 fontSize: 16.0,
               ),
               decoration: InputDecoration(
@@ -47,7 +40,7 @@ class TextInput extends StatelessWidget {
                 'Enter text', // Set the hint text
                 hintStyle: TextStyle(
                   color: Colors
-                      .grey, // Set the hint text color
+                      .grey.shade700, // Set the hint text color
                 ),
                 contentPadding:
                 EdgeInsets.symmetric(

@@ -1,12 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import 'reusable_card.dart';
-import 'constants.dart';
-import 'results_page.dart';
-import 'calculate_button.dart';
-import 'text_input_field.dart';
-import 'summarizer_engine.dart';
-import 'package:clipboard/clipboard.dart';
+
 class icon_buttons extends StatefulWidget {
   icon_buttons({this.name = '', required this.icons, required this.size, this.onpress});
 
@@ -28,7 +22,7 @@ class _icon_buttonsState extends State<icon_buttons> {
           padding: const EdgeInsets.only(left: 20, right: 20, top: 20, bottom: 10),
           child: Container(
             child: IconButton(
-              style: ButtonStyle(overlayColor: MaterialStatePropertyAll(Colors.blueAccent.shade100),),
+              style: ButtonStyle(overlayColor: MaterialStatePropertyAll(Colors.pinkAccent),),
               icon: Icon(widget.icons, color: Colors.white),
               iconSize: widget.size,
               onPressed: () {
@@ -40,7 +34,7 @@ class _icon_buttonsState extends State<icon_buttons> {
                 });
               },
             ),
-            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.blueAccent.shade100),
+            decoration: BoxDecoration(shape: BoxShape.circle, color: Colors.pinkAccent.shade200),
           ),
         ),
         Text(widget.name),

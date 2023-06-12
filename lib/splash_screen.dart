@@ -1,6 +1,7 @@
 import 'package:animated_splash_screen/animated_splash_screen.dart';
 import 'package:flutter/material.dart';
 import 'input_page.dart';
+// import 'ocr1.dart';
 import 'package:page_transition/page_transition.dart';
 import 'main.dart';
 
@@ -15,15 +16,12 @@ class SplashScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             LimitedBox(
-              maxHeight: 200, // Adjust the maximum height as needed
+              maxHeight: 100, // Adjust the maximum height as needed
               maxWidth: double.infinity,
               child: Image.asset(
                 'images/icon1.png',
               ),
             ),
-
-
-            // ),
             SizedBox(height: 100),
             Text(
               'Abstractly',

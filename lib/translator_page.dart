@@ -1,102 +1,138 @@
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+
+const String apiKey = 'AIzaSyDlYuQbsjJSESiKPIKHEAwCoNuaBZQjwio';
+const String baseUrl =
+    'https://translation.googleapis.com/language/translate/v2';
+
+class Translator {
+  static Future<String> translateText(
+      String text, String sourceLanguage, String targetLanguage) async {
+    if (text.isEmpty) return '';
+
+    // Construct the API request URL
+    String requestUrl =
+        '$baseUrl?key=$apiKey&source=$sourceLanguage&target=$targetLanguage&q=${Uri.encodeComponent(text)}';
+
+    // Send the API request and receive the response
+    http.Response response = await http.get(Uri.parse(requestUrl));
+    if (response.statusCode == 200) {
+      Map<String, dynamic> data = jsonDecode(response.body);
+      return data['data']['translations'][0]['translatedText'];
+    } else {
+      print('Error: ${response.statusCode}');
+      return '';
+    }
+  }
+}
+
+//used like this
+// void main() async {
+//   String inputText = 'Hello, world!';
+//   String sourceLanguage = 'en';
+//   String targetLanguage = 'fr';
+//
+//   String translatedText = await Translator.translateText(
+//     inputText,
+//     sourceLanguage,
+//     targetLanguage,
+//   );
+//
+//   print('Translated Text: $translatedText');
+// }
+
 // import 'package:flutter/material.dart';
-// import 'reusable_card.dart';
-// import 'constants.dart';
-// import 'calculate_button.dart';
-// import 'translation_engine.dart';
+// import 'package:http/http.dart' as http;
+// import 'dart:convert';
 //
-// class TranslationPage extends StatefulWidget {
-//   final String inputText;
+// const String apiKey = 'AIzaSyDlYuQbsjJSESiKPIKHEAwCoNuaBZQjwio';
+// const String baseUrl = 'https://translation.googleapis.com/language/translate/v2';
 //
-//   TranslationPage({required this.inputText});
-//
+// class TranslationApp extends StatefulWidget {
 //   @override
-//   _TranslationPageState createState() => _TranslationPageState();
+//   _TranslationAppState createState() => _TranslationAppState();
 // }
 //
-// class _TranslationPageState extends State<TranslationPage> {
-//   final TextEditingController _fromLanguageController = TextEditingController();
-//   final TextEditingController _toLanguageController = TextEditingController();
-//   String translatedText = '';
+// class _TranslationAppState extends State<TranslationApp> {
+//   TextEditingController _textEditingController = TextEditingController();
+//   String _translatedText = '';
+//
+//   void _translateText() async {
+//     String text = _textEditingController.text;
+//     if (text.isEmpty) return;
+//
+//
+//     String sourceLanguage = 'ml';
+//     String targetLanguage = 'en'; // Target language code, e.g., 'en' for English
+//
+//     // Construct the API request URL
+//     String requestUrl =
+//         '$baseUrl?key=$apiKey&source=$sourceLanguage&target=$targetLanguage&q=${Uri
+//         .encodeComponent(text)}';
+//
+//     // Send the API request and receive the response
+//     http.Response response = await http.get(Uri.parse(requestUrl));
+//     if (response.statusCode == 200) {
+//       Map<String, dynamic> data = jsonDecode(response.body);
+//       setState(() {
+//         _translatedText = data['data']['translations'][0]['translatedText'];
+//       });
+//     } else {
+//       print('Error: ${response.statusCode}');
+//     }
+//   }
 //
 //   @override
 //   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Center(
-//           child: Row(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             children: [
-//               Image.asset(
-//                 'images/icon1.png', // Path to your custom icon image
-//                 width: 24, // Adjust the width as needed
-//                 height: 24, // Adjust the height as needed
-//               ),
-//               SizedBox(width: 5), // Adjust the width as needed
-//               Text('Translate Summary'),
-//             ],
-//           ),
+//     return MaterialApp(
+//       home: Scaffold(
+//         appBar: AppBar(
+//           title: Text('Translation App'),
 //         ),
-//       ),
-//       body: Column(
-//         crossAxisAlignment: CrossAxisAlignment.stretch,
-//         children: [
-//           Expanded(
-//             child: Padding(
-//               padding: const EdgeInsets.all(8.0),
-//               child: ReusableCard(
-//                 kActiveCard,
-//                 SingleChildScrollView(
-//                   child: Column(
-//                     crossAxisAlignment: CrossAxisAlignment.center,
-//                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-//                     children: [
-//                       Text(
-//                         translatedText,
-//                         textAlign: TextAlign.center,
-//                         style: TextStyle(fontSize: 16.0),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ),
-//             ),
-//           ),
-//           Padding(
-//             padding: const EdgeInsets.all(8.0),
-//             child: TextField(
-//               controller: _fromLanguageController,
+//         body: Column(
+//           children: [
+//             TextField(
+//               controller: _textEditingController,
 //               decoration: InputDecoration(
-//                 labelText: 'From Language',
+//                 labelText: 'Enter text to translate',
 //               ),
 //             ),
-//           ),
-//           Padding(
-//             padding: const EdgeInsets.all(8.0),
-//             child: TextField(
-//               controller: _toLanguageController,
-//               decoration: InputDecoration(
-//                 labelText: 'To Language',
+//             ElevatedButton(
+//               onPressed: _translateText,
+//               child: Text('Translate'),
+//             ),
+//             SizedBox(height: 20),
+//             Text(
+//               'Translated Text:',
+//               style: TextStyle(
+//                 fontWeight: FontWeight.bold,
+//                 fontSize: 16,
 //               ),
 //             ),
-//           ),
-//           Button('Translate', onTap: () {
-//             String fromLanguage = _fromLanguageController.text;
-//             String toLanguage = _toLanguageController.text;
-//
-//             TranslationService()
-//                 .translateText(widget.inputText, fromLanguage, toLanguage)
-//                 .then((translatedResult) {
-//               if (translatedResult != null) {
-//                 setState(() {
-//                   translatedText = translatedResult.toString();
-//                 });
-//               }
-//             }).catchError((error) {
-//               print('Error: $error');
-//             });
-//           }),
-//         ],
+//             SizedBox(height: 10),
+//             Text(_translatedText),
+//           ],
+//         ),
 //       ),
 //     );
 //   }
 // }
+//
+// void main() {
+//   runApp(TranslationApp());
+// }
+// //
+// //  class translator extends StatefulWidget {
+// //    const translator({Key? key}) : super(key: key);
+// //
+// //    @override
+// //    State<translator> createState() => _translatorState();
+// //  }
+// //
+// //  class _translatorState extends State<translator> {
+// //    @override
+// //    Widget build(BuildContext context) {
+// //      return const Placeholder();
+// //    }
+// //  }
+// //
