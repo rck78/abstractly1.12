@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'icon_button.dart';
@@ -7,6 +9,10 @@ import 'translator_page.dart';
 import 'package:clipboard/clipboard.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 import 'package:share_plus/share_plus.dart';
+import 'wordcloud.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'lang_selector.dart';
+import 'pdf_gen.dart';
 
 class ResultsPage extends StatefulWidget {
   final String summary;
@@ -21,6 +27,10 @@ class ResultsPage extends StatefulWidget {
 class _ResultsPageState extends State<ResultsPage> {
   bool isPlaying = false;
   final FlutterTts flutterTts = FlutterTts();
+  bool isWordCloudVisible = false;
+  bool isSummaryVisible = true;
+  String wordCloudImage =
+      ''; // Variable to store the generated word cloud image
 
   String translatedText = ''; // Variable to store the translated text
   String targetLanguage = 'ml'; // Default target language
@@ -55,12 +65,27 @@ class _ResultsPageState extends State<ResultsPage> {
   }
 
   void translateSummary2() async {
-      translatedText = await Translator.translateText(
-        widget.summary,
-        'en',
-        targetLanguage,
-      );
-      setState(() {}); // Update the UI with the translated text
+    translatedText = await Translator.translateText(
+      widget.summary,
+      'en',
+      targetLanguage,
+    );
+    setState(() {}); // Update the UI with the translated text
+  }
+
+  void generateWordCloud() async {
+    try {
+      // Generate the word cloud using the summary
+      String generatedImage =
+          await WordCloudGenerator.generateWordCloud(widget.summary);
+
+      setState(() {
+        wordCloudImage = generatedImage;
+      });
+    } catch (e) {
+      // Handle any errors that occur during word cloud generation
+      print('Error generating word cloud: $e');
+    }
   }
 
   void changeTargetLanguage(String language) {
@@ -102,16 +127,28 @@ class _ResultsPageState extends State<ResultsPage> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      Padding(
-                        padding: const EdgeInsets.all(9.0),
-                        child: Text(
-                          translatedText.isNotEmpty // Display the translated text if available
-                              ? translatedText
-                              : widget.summary,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 20.0),
+                      Visibility(
+                        visible: isSummaryVisible,
+                        child: Padding(
+                            padding: const EdgeInsets.all(9.0),
+                            child: Text(
+                              translatedText
+                                      .isNotEmpty // Display the translated text if available
+                                  ? translatedText
+                                  : widget.summary,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 20.0),
+                            ),
+                          ),
+                      ),
+                      Visibility(
+                        visible: isWordCloudVisible,
+                        child: Padding(
+                          padding: const EdgeInsets.all(9.0),
+                          child: WordCloudOverlay(image: wordCloudImage),
                         ),
                       ),
+
                     ],
                   ),
                 ),
@@ -122,17 +159,12 @@ class _ResultsPageState extends State<ResultsPage> {
             children: [
               Expanded(
                 child: ReusableCard(
-                  kInactiveCard,
+                  // kInactiveCard,
+    Color(0xFF0A0D21),
                   Wrap(
                     alignment: WrapAlignment.spaceEvenly,
                     children: [
-                      icon_buttons(
-                        icons: Icons.share,
-                        size: 20,
-                        onpress: () {
-                          Share.share(widget.summary);
-                        },
-                      ),
+
                       icon_buttons(
                         icons: Icons.translate,
                         size: 20,
@@ -169,745 +201,86 @@ class _ResultsPageState extends State<ResultsPage> {
                         },
                       ),
                       icon_buttons(
-                        icons: Icons.copy,
+                          icons: Icons.cloud,
+                          size: 20,
+                          onpress: () {
+                            setState(() {
+                              isSummaryVisible = !isSummaryVisible;
+                              isWordCloudVisible = !isWordCloudVisible;
+                            });
+                            if (isWordCloudVisible) {
+                              generateWordCloud();
+                            }
+                          },
+                      ),
+
+                      icon_buttons(
+                        icons: Icons.share,
                         size: 20,
                         onpress: () {
-                          FlutterClipboard.copy(widget.summary).then((value) => print('copied'));
+                          Share.share(widget.summary);
                         },
                       ),
-                      //icon_buttons(icons: Icons.picture_as_pdf, size: 20),
-                      //icon_buttons(icons: Icons.image, size: 20),
-                      icon_buttons(icons: Icons.cloud, size: 20),
+
+                      icon_buttons(icons: Icons.picture_as_pdf_rounded, size: 20,
+                      // onpress: code to generate pdf of summary
+                        onpress: () {
+                        generatePDF(context, 'Summary', widget.summary,);
+                        },
+
+                      ),
+                      // icon_buttons(
+                      //   icons: Icons.copy,
+                      //   size: 20,
+                      //   onpress: () {
+                      //     FlutterClipboard.copy(widget.summary)
+                      //         .then((value) => print('copied'));
+                      //   },
+                      // ),
                     ],
                   ),
                 ),
               ),
             ],
           ),
+          // Word Cloud Overlay
+          // if (isWordCloudVisible)
+          //   GestureDetector(
+          //     onTap: () {
+          //       setState(() {
+          //         isWordCloudVisible = false;
+          //       });
+          //     },
+          //     child: Container(
+          //       color: Colors.black54,
+          //       child: Center(
+          //         child: WordCloudOverlay(image: wordCloudImage),
+          //       ),
+          //     ),
+          //   ),
         ],
       ),
     );
   }
 }
 
-class LanguageSelectionOverlay extends StatelessWidget {
-  final String currentLanguage;
-  final Function(String) onLanguageSelected;
+class WordCloudOverlay extends StatelessWidget {
+  final String image;
 
-  LanguageSelectionOverlay({
-    required this.currentLanguage,
-    required this.onLanguageSelected,
-  });
-
-  final List<String> languages = [
-    'ml', // Malayalam
-    'es', // Spanish
-    'ta', // Tamil
-    'en', // English
-    // Add more languages here
-  ];
+  WordCloudOverlay({required this.image});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      child: ListView.builder(
-        itemCount: languages.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(
-              languages[index],
-              style: TextStyle(
-                color: languages[index] == currentLanguage
-                    ? Colors.blue // Highlight the selected language
-                    : Colors.black,
-              ),
-            ),
-            onTap: () {
-              onLanguageSelected(languages[index]);
-              Navigator.pop(context);
-            },
-          );
-        },
-      ),
+    return SingleChildScrollView(
+      child: image.isNotEmpty
+          ? SvgPicture.string(
+        image,
+        fit: BoxFit.contain,
+        alignment: Alignment.topCenter,
+      )
+          : SizedBox(
+              height:
+                  12.0), // Or any other widget to display when the SVG string is empty
     );
   }
 }
-
-// import 'icon_button.dart';
-// import 'package:flutter/material.dart';
-// import 'reusable_card.dart';
-// import 'constants.dart';
-// import 'translator_page.dart';
-// import 'translation_engine.dart';
-// import 'package:clipboard/clipboard.dart';
-// import 'package:flutter_tts/flutter_tts.dart';
-// import 'package:share_plus/share_plus.dart';
-//
-// class ResultsPage extends StatefulWidget {
-//   final String summary;
-//
-//   ResultsPage({required this.summary});
-//
-//   @override
-//   _ResultsPageState createState() => _ResultsPageState();
-// }
-//
-// class _ResultsPageState extends State<ResultsPage> {
-//   bool isPlaying = false;
-//   final FlutterTts flutterTts = FlutterTts();
-//
-//   String translatedText = ''; // Variable to store the translated text
-//   String targetLanguage = 'ml'; // Default target language
-//
-//   void translateText() async {
-//     translatedText = await Translator.translateText(
-//       widget.summary,
-//       'en',
-//       targetLanguage,
-//     );
-//     setState(() {}); // Update the UI with the translated text
-//   }
-//
-//   void changeTargetLanguage(String language) {
-//     targetLanguage = language;
-//   }
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Scaffold(
-//       appBar: AppBar(
-//         title: Center(
-//           child: Row(
-//             mainAxisAlignment: MainAxisAlignment.center,
-//             children: [
-//               Image.asset(
-//                 'images/icon1.png',
-//                 width: 24,
-//                 height: 24,
-//               ),
-//               SizedBox(width: 5),
-//               Text('Your Summary'),
-//             ],
-//           ),
-//         ),
-//       ),
-//       body: Column(
-//         crossAxisAlignment: CrossAxisAlignment.stretch,
-//         children: [
-//           Expanded(
-//             child: Padding(
-//               padding: const EdgeInsets.all(8.0),
-//               child: ReusableCard(
-//                 kActiveCard,
-//                 SingleChildScrollView(
-//                   child: Column(
-//                     crossAxisAlignment: CrossAxisAlignment.center,
-//                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-//                     children: [
-//                       Padding(
-//                         padding: const EdgeInsets.all(9.0),
-//                         child: Text(
-//                           translatedText.isNotEmpty // Display the translated text if available
-//                               ? translatedText
-//                               : widget.summary,
-//                           textAlign: TextAlign.center,
-//                           style: TextStyle(fontSize: 20.0),
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ),
-//             ),
-//           ),
-//           Row(
-//             children: [
-//               Expanded(
-//                 child: ReusableCard(
-//                   kInactiveCard,
-//                   Wrap(
-//                     alignment: WrapAlignment.spaceEvenly,
-//                     children: [
-//                       icon_buttons(
-//                         icons: Icons.share,
-//                         size: 20,
-//                         onpress: () {
-//                           Share.share(widget.summary);
-//                         },
-//                       ),
-//                       icon_buttons(
-//                         icons: Icons.translate,
-//                         size: 20,
-//                         onpress: () {
-//                           showModalBottomSheet(
-//                             context: context,
-//                             builder: (BuildContext context) {
-//                               return LanguageSelectionOverlay(
-//                                 currentLanguage: targetLanguage,
-//                                 onLanguageSelected: (String language) {
-//                                   changeTargetLanguage(language);
-//                                   translateText();
-//                                 },
-//                               );
-//                             },
-//                           );
-//                         },
-//                       ),
-//                       icon_buttons(
-//                         icons: isPlaying ? Icons.square : Icons.volume_up,
-//                         size: 20,
-//                         onpress: () {
-//                           if (isPlaying) {
-//                             setState(() {
-//                               flutterTts.pause();
-//                               isPlaying = false;
-//                             });
-//                           } else {
-//                             setState(() {
-//                               flutterTts.speak(widget.summary);
-//                               isPlaying = true;
-//                             });
-//                           }
-//                         },
-//                       ),
-//                       icon_buttons(
-//                         icons: Icons.copy,
-//                         size: 20,
-//                         onpress: () {
-//                           FlutterClipboard.copy(widget.summary).then((value) => print('copied'));
-//                         },
-//                       ),
-//                       //icon_buttons(icons: Icons.picture_as_pdf, size: 20),
-//                       //icon_buttons(icons: Icons.image, size: 20),
-//                       icon_buttons(icons: Icons.cloud, size: 20),
-//                     ],
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }
-//
-// class LanguageSelectionOverlay extends StatelessWidget {
-//   final String currentLanguage;
-//   final Function(String) onLanguageSelected;
-//
-//   LanguageSelectionOverlay({
-//     required this.currentLanguage,
-//     required this.onLanguageSelected,
-//   });
-//
-//   final List<String> languages = [
-//     'ml', // Malayalam
-//     'es', // Spanish
-//     //'fr', // French
-//     'ta', // Tamil
-//     // Add more languages here
-//   ];
-//
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       child: ListView.builder(
-//         itemCount: languages.length,
-//         itemBuilder: (context, index) {
-//           return ListTile(
-//             title: Text(
-//               languages[index],
-//               style: TextStyle(
-//                 color: languages[index] == currentLanguage
-//                     ? Colors.blue // Highlight the selected language
-//                     : Colors.black,
-//               ),
-//             ),
-//             onTap: () {
-//               onLanguageSelected(languages[index]);
-//               Navigator.pop(context);
-//             },
-//           );
-//         },
-//       ),
-//     );
-//   }
-// }
-//
-//
-// // import 'icon_button.dart';
-// // import 'package:flutter/material.dart';
-// // import 'reusable_card.dart';
-// // import 'constants.dart';
-// // import 'translator_page.dart';
-// // import 'translation_engine.dart';
-// // import 'package:clipboard/clipboard.dart';
-// // import 'package:flutter_tts/flutter_tts.dart';
-// // import 'package:share_plus/share_plus.dart';
-// //
-// // class ResultsPage extends StatefulWidget {
-// //   final String summary;
-// //
-// //   ResultsPage({required this.summary});
-// //
-// //   @override
-// //   _ResultsPageState createState() => _ResultsPageState();
-// // }
-// //
-// // class _ResultsPageState extends State<ResultsPage> {
-// //   bool isPlaying = false;
-// //   final FlutterTts flutterTts = FlutterTts();
-// //
-// //   String translatedText = ''; // Variable to store the translated text
-// //   String targetLanguage = 'ml'; // Default target language
-// //
-// //   void translateText() async {
-// //     translatedText = await Translator.translateText(
-// //       widget.summary,
-// //       'en',
-// //       targetLanguage,
-// //     );
-// //     setState(() {}); // Update the UI with the translated text
-// //   }
-// //
-// //   @override
-// //   Widget build(BuildContext context) {
-// //     return Scaffold(
-// //       appBar: AppBar(
-// //         title: Center(
-// //           child: Row(
-// //             mainAxisAlignment: MainAxisAlignment.center,
-// //             children: [
-// //               Image.asset(
-// //                 'images/icon1.png',
-// //                 width: 24,
-// //                 height: 24,
-// //               ),
-// //               SizedBox(width: 5),
-// //               Text('Your Summary'),
-// //             ],
-// //           ),
-// //         ),
-// //       ),
-// //       body: Column(
-// //         crossAxisAlignment: CrossAxisAlignment.stretch,
-// //         children: [
-// //           Expanded(
-// //             child: Padding(
-// //               padding: const EdgeInsets.all(8.0),
-// //               child: ReusableCard(
-// //                 kActiveCard,
-// //                 SingleChildScrollView(
-// //                   child: Column(
-// //                     crossAxisAlignment: CrossAxisAlignment.center,
-// //                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-// //                     children: [
-// //                       Padding(
-// //                         padding: const EdgeInsets.all(9.0),
-// //                         child: Text(
-// //                           translatedText.isNotEmpty // Display the translated text if available
-// //                               ? translatedText
-// //                               : widget.summary,
-// //                           textAlign: TextAlign.center,
-// //                           style: TextStyle(fontSize: 20.0),
-// //                         ),
-// //                       ),
-// //                     ],
-// //                   ),
-// //                 ),
-// //               ),
-// //             ),
-// //           ),
-// //           Row(
-// //             children: [
-// //               Expanded(
-// //                 child: ReusableCard(
-// //                   kInactiveCard,
-// //                   Wrap(
-// //                     alignment: WrapAlignment.spaceEvenly,
-// //                     children: [
-// //                       icon_buttons(
-// //                         icons: Icons.share,
-// //                         size: 20,
-// //                         onpress: () {
-// //                           Share.share(widget.summary);
-// //                         },
-// //                       ),
-// //                       icon_buttons(
-// //                         icons: Icons.translate,
-// //                         size: 20,
-// //                         onpress: () {
-// //                           translateText(); // Invoke the translation method
-// //                         },
-// //                       ),
-// //                       icon_buttons(
-// //                         icons: isPlaying ? Icons.square : Icons.volume_up,
-// //                         size: 20,
-// //                         onpress: () {
-// //                           if (isPlaying) {
-// //                             setState(() {
-// //                               flutterTts.pause();
-// //                               isPlaying = false;
-// //                             });
-// //                           } else {
-// //                             setState(() {
-// //                               flutterTts.speak(widget.summary);
-// //                               isPlaying = true;
-// //                             });
-// //                           }
-// //                         },
-// //                       ),
-// //                       icon_buttons(
-// //                         icons: Icons.copy,
-// //                         size: 20,
-// //                         onpress: () {
-// //                           FlutterClipboard.copy(widget.summary).then((value) => print('copied'));
-// //                         },
-// //                       ),
-// //                       icon_buttons(icons: Icons.picture_as_pdf, size: 20),
-// //                       icon_buttons(icons: Icons.image, size: 20),
-// //                     ],
-// //                   ),
-// //                 ),
-// //               ),
-// //             ],
-// //           ),
-// //         ],
-// //       ),
-// //     );
-// //   }
-// // }
-// //
-// // //code2
-// // // import 'package:flutter/material.dart';
-// // // import 'reusable_card.dart';
-// // // import 'constants.dart';
-// // // import 'translator_page.dart';
-// // // import 'translation_engine.dart';
-// // // import 'package:clipboard/clipboard.dart';
-// // // import 'package:flutter_tts/flutter_tts.dart';
-// // // import 'package:share_plus/share_plus.dart';
-// // // import 'icon_button.dart';
-// // //
-// // // class Results extends StatefulWidget {
-// // //   final String summary;
-// // //   bool isPlaying = false;
-// // //   final FlutterTts flutterTts = FlutterTts();
-// // //
-// // //   String translatedText = ''; // Variable to store the translated text
-// // //   String targetLanguage = 'en'; // Default target language
-// // //
-// // //   void translateText() async {
-// // //     translatedText = await Translator.translateText(
-// // //       summary,
-// // //       'en',
-// // //       targetLanguage,
-// // //     );
-// // //     setState(() {}); // Update the UI with the translated text
-// // //   }
-// // //
-// // //   Results({required this.summary});
-// // //
-// // //   @override
-// // //   State<Results> createState() => _ResultsState();
-// // // }
-// // //
-// // // class _ResultsState extends State<Results> {
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     return Scaffold(
-// // //       appBar: AppBar(
-// // //         title: Center(
-// // //           child: Row(
-// // //             mainAxisAlignment: MainAxisAlignment.center,
-// // //             children: [
-// // //               Image.asset(
-// // //                 'images/icon1.png',
-// // //                 width: 24,
-// // //                 height: 24,
-// // //               ),
-// // //               SizedBox(width: 5),
-// // //               Text('Your Summary'),
-// // //             ],
-// // //           ),
-// // //         ),
-// // //       ),
-// // //       body: Column(
-// // //         crossAxisAlignment: CrossAxisAlignment.stretch,
-// // //         children: [
-// // //           Expanded(
-// // //             child: Padding(
-// // //               padding: const EdgeInsets.all(8.0),
-// // //               child: ReusableCard(
-// // //                 kActiveCard,
-// // //                 SingleChildScrollView(
-// // //                   child: Column(
-// // //                     crossAxisAlignment: CrossAxisAlignment.center,
-// // //                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-// // //                     children: [
-// // //                       Padding(
-// // //                         padding: const EdgeInsets.all(9.0),
-// // //                         child: Text(
-// // //                           widget.translatedText
-// // //                                   .isNotEmpty // Display the translated text if available
-// // //                               ? widget.translatedText
-// // //                               : widget.summary,
-// // //                           textAlign: TextAlign.center,
-// // //                           style: TextStyle(fontSize: 20.0),
-// // //                         ),
-// // //                       ),
-// // //                     ],
-// // //                   ),
-// // //                 ),
-// // //               ),
-// // //             ),
-// // //           ),
-// // //           Row(
-// // //             children: [
-// // //               Expanded(
-// // //                 child: ReusableCard(
-// // //                   kInactiveCard,
-// // //                   Wrap(
-// // //                     alignment: WrapAlignment.spaceEvenly,
-// // //                     children: [
-// // //                       icon_buttons(
-// // //                         icons: Icons.share,
-// // //                         size: 20,
-// // //                         onpress: () {
-// // //                           Share.share(widget.summary);
-// // //                         },
-// // //                       ),
-// // //                       icon_buttons(
-// // //                         icons: Icons.translate,
-// // //                         size: 20,
-// // //                         onpress: () {
-// // //                           widget
-// // //                               .translateText(); // Invoke the translation method
-// // //                         },
-// // //                       ),
-// // //                       icon_buttons(
-// // //                         icons:
-// // //                             widget.isPlaying ? Icons.square : Icons.volume_up,
-// // //                         size: 20,
-// // //                         onpress: () {
-// // //                           if (widget.isPlaying) {
-// // //                             setState(() {
-// // //                               widget.flutterTts.pause();
-// // //                               widget.isPlaying = false;
-// // //                             });
-// // //                           } else {
-// // //                             setState(() {
-// // //                               widget.flutterTts.speak(widget.summary);
-// // //                               widget.isPlaying = true;
-// // //                             });
-// // //                           }
-// // //                         },
-// // //                       ),
-// // //                       icon_buttons(
-// // //                         icons: Icons.copy,
-// // //                         size: 20,
-// // //                         onpress: () {
-// // //                           FlutterClipboard.copy(widget.summary)
-// // //                               .then((value) => print('copied'));
-// // //                         },
-// // //                       ),
-// // //                       icon_buttons(icons: Icons.picture_as_pdf, size: 20),
-// // //                       icon_buttons(icons: Icons.image, size: 20),
-// // //                     ],
-// // //                   ),
-// // //                 ),
-// // //               ),
-// // //             ],
-// // //           ),
-// // //         ],
-// // //       ),
-// // //     );
-// // //   }
-// // // }
-// //
-// // // import 'package:flutter/material.dart';
-// // // import 'reusable_card.dart';
-// // // import 'constants.dart';
-// // // //import 'calculate_button.dart';
-// // // import 'translator_page.dart';// Import the TranslationPage
-// // // import 'icon_button.dart';
-// // // import 'translation_engine.dart';
-// // // // import 'package:translator/translator.dart';
-// // // import 'package:clipboard/clipboard.dart';
-// // // import 'package:flutter_tts/flutter_tts.dart';
-// // // import 'package:share_plus/share_plus.dart';
-// // //
-// // //
-// // // // class ResultPage extends StatelessWidget {
-// // // //   final String summary;
-// // // //
-// // // //   ResultPage({required this.summary});
-// // // //
-// // // //   @override
-// // // //   Widget build(BuildContext context) {
-// // // //     return Scaffold(
-// // // //       appBar: AppBar(
-// // // //         title: Center(
-// // // //           child: Row(
-// // // //             mainAxisAlignment: MainAxisAlignment.center,
-// // // //             children: [
-// // // //               Image.asset(
-// // // //                 'images/icon1.png',
-// // // //                 width: 24,
-// // // //                 height: 24,
-// // // //               ),
-// // // //               SizedBox(width: 5),
-// // // //               Text('Your Summary'),
-// // // //             ],
-// // // //           ),
-// // // //         ),
-// // // //       ),
-// // // //       body: Results(summary: summary),
-// // // //     );
-// // // //   }
-// // // // }
-// // //
-// // // class Results extends StatefulWidget {
-// // //   final String summary;
-// // //    bool isPlaying= false;
-// // //   final FlutterTts flutterTts = FlutterTts();
-// // //
-// // //   speak() async {
-// // //     await flutterTts.setLanguage("en-US");
-// // //     await flutterTts.setPitch(1); // 0.5 - 1
-// // //     await flutterTts.speak(summary);// Pass the text you want to speak as an argument
-// // //     await flutterTts.setVolume(0.5);
-// // //     await flutterTts.pause();
-// // //   }
-// // //
-// // //   // void main() async {
-// // //   //   final translator = GoogleTranslator();
-// // //   //
-// // //   //   final input = summary;
-// // //   //
-// // //   //   // translator.translate(input, from: 'ru', to: 'en').then(print);
-// // //   //   // prints Hello. Are you okay?
-// // //   //
-// // //   //   var translation = await translator.translate(input, to: 'ml');
-// // //   //   print(translation);
-// // //   //   // prints Dart jest bardzo fajny!
-// // //   //
-// // //   //   // print(await "example".translate(to: 'pt'));
-// // //   //   // prints exemplo
-// // //   // }
-// // //
-// // //   Results({required this.summary});
-// // //
-// // //   @override
-// // //   State<Results> createState() => _ResultsState();
-// // // }
-// // //
-// // // class _ResultsState extends State<Results> {
-// // //
-// // //   //GoogleTranslator translator = GoogleTranslator();
-// // //   // String input = widget.summary;
-// // //
-// // //   // void translate(){
-// // //   //   translator.translate(widget.summary, to: 'ml');}
-// // //
-// // //   @override
-// // //   Widget build(BuildContext context) {
-// // //     return Scaffold(
-// // //       appBar: AppBar(
-// // //         title: Center(
-// // //           child: Row(
-// // //             mainAxisAlignment: MainAxisAlignment.center,
-// // //             children: [
-// // //               Image.asset(
-// // //                 'images/icon1.png',
-// // //                 width: 24,
-// // //                 height: 24,
-// // //               ),
-// // //               SizedBox(width: 5),
-// // //               Text('Your Summary'),
-// // //             ],
-// // //           ),
-// // //         ),
-// // //       ),
-// // //       body:Column(
-// // //       crossAxisAlignment: CrossAxisAlignment.stretch,
-// // //       children: [
-// // //         Expanded(
-// // //           child: Padding(
-// // //             padding: const EdgeInsets.all(8.0),
-// // //             child: ReusableCard(
-// // //               kActiveCard,
-// // //               SingleChildScrollView(
-// // //                 child: Column(
-// // //                   crossAxisAlignment: CrossAxisAlignment.center,
-// // //                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-// // //                   children: [
-// // //                     Padding(
-// // //                       padding: const EdgeInsets.all(9.0),
-// // //                       child: Text(
-// // //                         widget.summary,
-// // //                         textAlign: TextAlign.center,
-// // //                         style: TextStyle(fontSize: 20.0),
-// // //                       ),
-// // //                     ),
-// // //                   ],
-// // //                 ),
-// // //               ),
-// // //             ),
-// // //           ),
-// // //         ),
-// // //         Row(
-// // //           children: [
-// // //             Expanded(
-// // //               child: ReusableCard(
-// // //                 kInactiveCard,
-// // //                 Wrap(
-// // //                   alignment: WrapAlignment.spaceEvenly,
-// // //                   children: [
-// // //                     icon_buttons(icons: Icons.share, size: 20,
-// // //                     onpress: (){
-// // //                       Share.share(widget.summary);
-// // //                     },),
-// // //                     icon_buttons(
-// // //                       icons: Icons.translate,
-// // //                       size: 20,
-// // //                       onpress: () {
-// // //                           // translate();
-// // //                           },
-// // //                     ),
-// // //                     icon_buttons(icons: widget.isPlaying?Icons.square:Icons.volume_up, size: 20,
-// // //                     onpress: (){
-// // //                       if(widget.isPlaying){
-// // //                         setState(() {
-// // //                           widget.flutterTts.pause();
-// // //                           widget.isPlaying=false;
-// // //                         });
-// // //                       }
-// // //                       else{
-// // //                         setState(() {
-// // //                           widget.flutterTts.speak(widget.summary);
-// // //                           widget.isPlaying=true;
-// // //                         });
-// // //                       }
-// // //
-// // //
-// // //                     },),
-// // //                     icon_buttons(icons: Icons.copy, size: 20,
-// // //                     onpress: (){
-// // //                       FlutterClipboard.copy(widget.summary).then(( value ) =>print('copied'));
-// // //                     },),
-// // //                     icon_buttons(icons: Icons.picture_as_pdf, size: 20),
-// // //                     icon_buttons(icons: Icons.image, size: 20),
-// // //                   ],
-// // //                 ),
-// // //               ),
-// // //             ),
-// // //           ],
-// // //         ),
-// // //       ],
-// // //     ),
-// // //     );
-// // //   }
-// // // }
-// // //

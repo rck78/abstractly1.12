@@ -13,6 +13,12 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'text_extractor.dart';
 import 'package:flutter_tesseract_ocr/flutter_tesseract_ocr.dart';
+import 'wordcloud.dart';
+import 'dart:async';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'pdf_conversion.dart';
 
 class InputPage extends StatefulWidget {
   const InputPage({Key? key}) : super(key: key);
@@ -26,6 +32,8 @@ class _InputPageState extends State<InputPage> {
   TextEditingController inputController = TextEditingController();
   bool isTextPasted = false;
   bool isImageSelected = false;
+  String _wordCloudSvg = '';
+  String _conversionResult = '';
 
   Future<void> selectImageAndRecognizeText() async {
     final imagePicker = ImagePicker();
@@ -37,6 +45,31 @@ class _InputPageState extends State<InputPage> {
         isImageSelected = true;
       });
     }
+  }
+
+  Future<void> selectPdfAndRecognizeText() async {
+    String? convertedText = await PdfConverter.pickAndConvertPdfToText();
+    if (convertedText != null) {
+      // Handle the converted text
+      setState(() {
+        inputController.text = convertedText;
+        isImageSelected = true;
+      });
+    } else {
+      // Handle conversion failure or no file selected
+      print('Conversion failed or no file selected');
+    }
+
+
+    // final imagePicker = ImagePicker();
+    // final pickedImage = await imagePicker.pickImage(source: ImageSource.gallery);
+    // if (pickedImage != null) {
+    //   final text = await extractTextFromImage(pickedImage.path);
+    //   setState(() {
+    //     inputController.text = text;
+    //     isImageSelected = true;
+    //   });
+    // }
   }
 
   Future<String> extractTextFromImage(String imagePath) async {
@@ -53,6 +86,7 @@ class _InputPageState extends State<InputPage> {
 
     // Language detection
     String detectedLanguage = await detectLanguage(inputText);
+
 
     if (detectedLanguage == 'en') {
       // Input text is in English, proceed with summarization
@@ -72,6 +106,8 @@ class _InputPageState extends State<InputPage> {
     String detectedLangu = lang;
 
     TextSummarizer.summarizeText(text, summarySize).then((summary) {
+      final userInput = summary;
+      generateWordCloud(userInput);
       //print(summary);
       Navigator.push(
         context,
@@ -96,6 +132,16 @@ class _InputPageState extends State<InputPage> {
   }
 
   @override
+  void generateWordCloud(String userInput) async {
+    try {
+      String wordCloudSvg = await WordCloudGenerator.generateWordCloud(userInput);
+      setState(() {
+        _wordCloudSvg = wordCloudSvg;
+      });
+    } catch (e) {
+      print('Error generating word cloud: $e');
+    }
+  }
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
@@ -164,39 +210,6 @@ class _InputPageState extends State<InputPage> {
                                   },
                                 ),
                               ),
-                              Positioned(
-                                bottom: 48.0,
-                                right: 8.0,
-                                child: IconButton(
-                                  color: Colors.purpleAccent,
-                                  icon: isImageSelected
-                                      ? Icon(Icons.close)
-                                      : isImageSelected
-                                      ? Icon(Icons.photo_album_outlined)
-                                      : Icon(Icons.photo_album_rounded),
-                                  onPressed:  selectImageAndRecognizeText,
-                                  // {
-                                  //   if (isImageSelected) {
-                                  //     setState(() {
-                                  //       inputController.clear();
-                                  //       isImageSelected = false;
-                                  //     });
-                                  //   } else if (isImageSelected) {
-                                  //     setState(() {
-                                  //       inputController.clear();
-                                  //       isImageSelected = false;
-                                  //     });
-                                  //   } else {  //here the app should open an image selection overlay which allows the user to pick an image and select the laguage and then calls the text extraction methord which returns the extracted text
-                                  //     textextractionlogic.then((value) {
-                                  //       setState(() {
-                                  //         inputController.text = value;
-                                  //         isImageSelected = true;
-                                  //       });
-                                  //     });
-                                  //   }
-                                  // },
-                                ),
-                              ),
                             ],
                           ),
                           SizedBox(height: 30.0),
@@ -218,6 +231,7 @@ class _InputPageState extends State<InputPage> {
                               value: sliderNum.toDouble(),
                               min: 10.0,
                               max: 100.0,
+                              divisions: 9,
                               label: sliderNum.round().toString(),
                               onChanged: (double new_value) {
                                 setState(
@@ -228,7 +242,7 @@ class _InputPageState extends State<InputPage> {
                               },
                             ),
                           ),
-                          Text("Summary Percent"),
+                          Text("Desired Summary Percent"),
                         ],
                       ),
                     ),
@@ -242,12 +256,20 @@ class _InputPageState extends State<InputPage> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                icon_buttons(
+                  name: 'Summarize from PDF',
+                  icons: Icons.picture_as_pdf_outlined,
+                  size: 50,
+                  onpress: selectPdfAndRecognizeText,
+                  // isTextPasted = true,
+                ),
                 SizedBox(width: 10.0),
                 icon_buttons(
-                  name: 'Camera',
-                  icons: Icons.camera_alt_outlined,
+                  name: 'Summarize from Image',
+                  icons: Icons.photo_album_rounded,
                   size: 50,
-                  // onpress: selectImageAndRecognizeText,
+                  onpress: selectImageAndRecognizeText,
+                    // isTextPasted = true,
                 ),
               ],
             ),

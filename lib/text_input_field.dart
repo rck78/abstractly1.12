@@ -31,7 +31,7 @@ class TextInput extends StatelessWidget {
               maxLines: null,
               cursorColor: kBottomContainerColour,
               style: TextStyle(
-                color: Colors.black,
+                color: Colors.white,
                 fontSize: 16.0,
               ),
               decoration: InputDecoration(
@@ -40,7 +40,7 @@ class TextInput extends StatelessWidget {
                 'Enter text', // Set the hint text
                 hintStyle: TextStyle(
                   color: Colors
-                      .grey.shade700, // Set the hint text color
+                      .white70, // Set the hint text color
                 ),
                 contentPadding:
                 EdgeInsets.symmetric(
